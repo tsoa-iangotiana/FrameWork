@@ -1,4 +1,5 @@
 package Controller;
+
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Method;
@@ -31,7 +32,7 @@ public class FrontController extends HttpServlet {
         super.init();
 
         // récupérer la liste des contrôleurs
-        String packageName = this.getInitParameter("Controller_package");
+        String packageName = this.getInitParameter("Controller_Package");
         try {
             this.setControllers(ListClasse.getAllClasses(packageName));
 
