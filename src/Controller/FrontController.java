@@ -2,6 +2,7 @@ package Controller;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -83,12 +84,27 @@ public class FrontController extends HttpServlet {
         // Récupération nom_contrôleur et méthode
         String controllerName = mapping.getClassName();
         String methodName = mapping.getMethodName();
-    
-        resp.setContentType("text/html");
-        out.println("<h2>Sprint 2 </h2><br>");
-        out.println("<p>Lien : " + url + "</p>");
-        out.println("<p>Contrôleur : " + controllerName + "</p>");
-        out.println("<p>Méthode : " + methodName + "</p>");
+         try {
+            // Instanciation du contrôleur
+            Class<?> controllerClass = Class.forName(controllerName);
+            Object controllerInstance = controllerClass.newInstance();
+            
+            // Récupération de la méthode
+            Method method = controllerClass.getMethod(methodName);
+            
+            // Exécution de la méthode et récupération du résultat
+            Object result = method.invoke(controllerInstance);
+            
+            // Affichage du résultat
+            resp.setContentType("text/html");
+            out.println("<h2>Sprint 2 </h2><br>");
+            out.println("<p>Lien : " + url + "</p>");
+            out.println("<p>Contrôleur : " + controllerName + "</p>");
+            out.println("<p>Méthode : " + methodName + "</p>");
+            out.println("<p>Résultat : " + result + "</p>");
+        } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
+            throw new ServletException("Erreur lors de l'exécution de la méthode", e);
+        }
     }
 
 }
