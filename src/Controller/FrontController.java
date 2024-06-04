@@ -10,6 +10,7 @@ import java.util.HashMap;
 import Annotation.Get;
 import Fonction.ListClasse;
 import Fonction.Mapping;
+import Fonction.ModelView;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -75,12 +76,12 @@ public class FrontController extends HttpServlet {
         PrintWriter out = resp.getWriter();
         // Check URL
         Mapping mapping = urlMappings.get(url);
+        
         if (mapping == null) {
             resp.setContentType("text/html");
             out.println("<h2>Erreur: L'URL demandée n'est pas disponible!</h2>");
             return;
         }
-    
         // Récupération nom_contrôleur et méthode
         String controllerName = mapping.getClassName();
         String methodName = mapping.getMethodName();
@@ -94,14 +95,26 @@ public class FrontController extends HttpServlet {
             
             // Exécution de la méthode et récupération du résultat
             Object result = method.invoke(controllerInstance);
-            
+               
+            if (result instanceof ModelView) {
+            ModelView modelView = (ModelView) result;
+            String viewUrl = modelView.getUrl();
+            HashMap<String, Object> data = modelView.getData();
+             for (String key : data.keySet()) {
+                req.setAttribute(key, data.get(key));
+            }
+
+            req.getRequestDispatcher(viewUrl).forward(req, resp);      
+
+            }else{
             // Affichage du résultat
             resp.setContentType("text/html");
             out.println("<h2>Sprint 2 </h2><br>");
             out.println("<p>Lien : " + url + "</p>");
             out.println("<p>Contrôleur : " + controllerName + "</p>");
             out.println("<p>Méthode : " + methodName + "</p>");
-            out.println("<p>Résultat : " + result + "</p>");
+            out.println("<p>Résultat : " + result.toString() + "</p>");
+            }
         } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
             throw new ServletException("Erreur lors de l'exécution de la méthode", e);
         }
