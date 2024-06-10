@@ -30,28 +30,30 @@ public class FrontController extends HttpServlet {
     }
 
     @Override
-    public void init() throws ServletException{
+    public void init() throws ServletException {
         super.init();
-
-        // récupérer la liste des contrôleurs
         String packageName = this.getInitParameter("Controller_Package");
+        if (packageName == null || packageName.isEmpty()) {
+            throw new ServletException("Le paramètre 'Controller_Package' est manquant ou vide");
+        }
+    
         try {
             this.setControllers(ListClasse.getAllClasses(packageName));
-
-            // itérer les contrôleurs et récupérer les méthodes annotées par @Get
+    
             for (Class<?> controller : this.getControllers()) {
                 for (Method method : controller.getDeclaredMethods()) {
                     if (method.isAnnotationPresent(Get.class)) {
-                       //nom_classe et nom_methode
                         String className = controller.getName();
                         String methodName = method.getName();
-
-                        //@Get value
                         Get getAnnotation = method.getAnnotation(Get.class);
                         String url = getAnnotation.value();
-
+    
+                        if (urlMappings.containsKey(url)) {
+                            throw new ServletException("URL en double détectée: " + url + " pour " + className + "#" + methodName);
+                        }
+    
                         Mapping mapping = new Mapping(className, methodName);
-                        urlMappings.put(url, mapping); //add dans HashMap
+                        urlMappings.put(url, mapping);
                     }
                 }
             }
@@ -59,7 +61,6 @@ public class FrontController extends HttpServlet {
             throw new ServletException("Erreur lors du scan des contrôleurs", e);
         }
     }
-
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         processRequest(req, resp);
@@ -76,12 +77,12 @@ public class FrontController extends HttpServlet {
         PrintWriter out = resp.getWriter();
         // Check URL
         Mapping mapping = urlMappings.get(url);
-        
         if (mapping == null) {
             resp.setContentType("text/html");
             out.println("<h2>Erreur: L'URL demandée n'est pas disponible!</h2>");
             return;
         }
+    
         // Récupération nom_contrôleur et méthode
         String controllerName = mapping.getClassName();
         String methodName = mapping.getMethodName();
@@ -96,7 +97,8 @@ public class FrontController extends HttpServlet {
             // Exécution de la méthode et récupération du résultat
             Object result = method.invoke(controllerInstance);
                
-            if (result instanceof ModelView) {
+            if (result instanceof ModelView)
+        {
             ModelView modelView = (ModelView) result;
             String viewUrl = modelView.getUrl();
             HashMap<String, Object> data = modelView.getData();
@@ -106,16 +108,18 @@ public class FrontController extends HttpServlet {
 
             req.getRequestDispatcher(viewUrl).forward(req, resp);      
 
-            }else{
-            // Affichage du résultat
-            resp.setContentType("text/html");
-            out.println("<h2>Sprint 2 </h2><br>");
-            out.println("<p>Lien : " + url + "</p>");
-            out.println("<p>Contrôleur : " + controllerName + "</p>");
-            out.println("<p>Méthode : " + methodName + "</p>");
-            out.println("<p>Résultat : " + result.toString() + "</p>");
-            }
-        } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
+        }else if (result instanceof String ) 
+        {
+                resp.setContentType("text/html");
+                out.println("<h2>Sprint 2 </h2><br>");
+                out.println("<p>Lien : " + url + "</p>");
+                out.println("<p>Contrôleur : " + controllerName + "</p>");
+                out.println("<p>Méthode : " + methodName + "</p>");
+                out.println("<p>Résultat : " + result.toString() + "</p>");
+                
+        }else{
+                throw new ServletException("Le type de retour de la méthode est invalide");
+             } }catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
             throw new ServletException("Erreur lors de l'exécution de la méthode", e);
         }
     }
