@@ -1,10 +1,15 @@
 package Fonction;
 
-import java.lang.annotation.Annotation;
-import java.util.*;
 import java.io.File;
 import java.io.IOException;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.net.URL;
+import java.util.ArrayList;
+
+import Annotation.Parametre;
+import jakarta.servlet.http.HttpServletRequest;
 
 public class ListClasse {
     public static ArrayList<Class<?>> getAllClasses(String packageName) throws ClassNotFoundException, IOException {
@@ -46,5 +51,21 @@ public class ListClasse {
         }
 
         return result;
+    }
+    public static ArrayList<Object> parameterMethod(Method method, HttpServletRequest request){
+        ArrayList<Object> parameterValues = new ArrayList<>();
+        for (Parameter parameter : method.getParameters()) {
+            if (parameter.isAnnotationPresent(Parametre.class)) {
+                Parametre argument = parameter.getAnnotation(Parametre.class);
+                String argument_value = argument.value();
+                String value = request.getParameter(argument_value);
+                if (value != null) {
+                    parameterValues.add(value);
+                } else {
+                    throw new IllegalArgumentException("Paramètre manquant: " + argument_value);
+                }
+            }
+        }
+        return parameterValues;
     }
 }
