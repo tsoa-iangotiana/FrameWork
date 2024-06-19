@@ -5,10 +5,13 @@ import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import Annotation.Parametre;
 import java.net.URL;
 import java.util.ArrayList;
 
-import Annotation.Parametre;
+import com.thoughtworks.paranamer.AdaptiveParanamer;
+import com.thoughtworks.paranamer.Paranamer;
+
 import jakarta.servlet.http.HttpServletRequest;
 
 public class ListClasse {
@@ -52,19 +55,39 @@ public class ListClasse {
 
         return result;
     }
-    public static ArrayList<Object> parameterMethod(Method method, HttpServletRequest request){
+public static ArrayList<Object> ParameterMethod(Method method, HttpServletRequest request) throws Exception {
         ArrayList<Object> parameterValues = new ArrayList<>();
-        for (Parameter parameter : method.getParameters()) {
-            if (parameter.isAnnotationPresent(Parametre.class)) {
-                Parametre argument = parameter.getAnnotation(Parametre.class);
-                String argument_value = argument.value();
-                String value = request.getParameter(argument_value);
-                if (value != null) {
-                    parameterValues.add(value);
-                } else {
-                    throw new IllegalArgumentException("Paramètre manquant: " + argument_value);
+        Paranamer paranamer = new AdaptiveParanamer();
+        String[] parameterNamesArray = paranamer.lookupParameterNames(method, false);
+    
+        // Récupérer les noms des paramètres de la méthode en utilisant la réflexion
+        Parameter[] parameters = method.getParameters();
+        for (int i = 0; i < parameters.length; i++) {
+            Parameter param = parameters[i];
+            String value = null;
+            if (param.isAnnotationPresent(Parametre.class)) {
+                Parametre argument = param.getAnnotation(Parametre.class);
+                String arg_name = argument.value();
+                value = request.getParameter(arg_name);
+            } else {
+                String paramName = parameterNamesArray[i];
+                String[] requestParamNames = request.getParameterMap().keySet().toArray(new String[0]);
+                boolean found = false;
+                for (String requestParamName : requestParamNames) {
+                    if (requestParamName.equals(paramName)) {
+                        found = true;
+                        value = request.getParameter(requestParamName);
+                        break;
+                    }
+                }
+                if (!found) {
+                    throw new IllegalArgumentException("Le paramètre " + paramName + " n'existe pas dans la méthode");
                 }
             }
+            if (value == null) {
+                throw new IllegalArgumentException("Paramètre manquant ou invalide: " + param.getName());
+            }
+            parameterValues.add(value);
         }
         return parameterValues;
     }

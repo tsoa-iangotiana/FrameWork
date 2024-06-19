@@ -64,15 +64,24 @@ ArrayList<Class<?>> controllers;
     }
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        processRequest(req, resp);
+        try {
+            processRequest(req, resp);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        processRequest(req, resp);
+        try {
+            processRequest(req, resp);
+        } catch (Exception e) {
+            
+            e.printStackTrace();
+        }
     }
     
-    private void processRequest(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+    private void processRequest(HttpServletRequest req, HttpServletResponse resp) throws Exception {
         String url = req.getServletPath();
         PrintWriter out = resp.getWriter();
         Mapping mapping = urlMappings.get(url);
@@ -101,7 +110,7 @@ ArrayList<Class<?>> controllers;
             Object result;
             Parameter[] parameters = method.getParameters();
             if (parameters.length > 0) {
-                ArrayList<Object> values = ListClasse.parameterMethod(method, req);
+                ArrayList<Object> values = ListClasse.ParameterMethod(method, req);
                 if (values.size() != parameters.length) {
                     throw new IllegalArgumentException("Nombre d'arguments incorrect pour la méthode " + method);
                 }
