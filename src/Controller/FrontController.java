@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -107,18 +106,27 @@ ArrayList<Class<?>> controllers;
                 throw new NoSuchMethodException(controllerClass.getName() + "." + methodName + "()");
             }
     
+            // Parameter[] parameters = method.getParameters();
+            // if (parameters.length > 0) {
+            //     ArrayList<Object> values = ListClasse.ParameterMethod(method, req);
+            //     if (values.size() != parameters.length) {
+            //         throw new IllegalArgumentException("Nombre d'arguments incorrect pour la méthode " + method);
+            //     }
+            //     result = method.invoke(controllerInstance, values.toArray());
+            // } else {
+            //     result = method.invoke(controllerInstance);
+            // }
+    
             Object result;
-            Parameter[] parameters = method.getParameters();
-            if (parameters.length > 0) {
-                ArrayList<Object> values = ListClasse.ParameterMethod(method, req);
-                if (values.size() != parameters.length) {
-                    throw new IllegalArgumentException("Nombre d'arguments incorrect pour la méthode " + method);
+            if(method.getParameterCount() > 0){
+                ArrayList<Object> parameterValues = ListClasse.getParameterValuesCombined(method, req);
+                if (parameterValues.size() != method.getParameterCount()) {
+                    throw new IllegalArgumentException("Nombre d'argument incorrect pour la methode" + method);
                 }
-                result = method.invoke(controllerInstance, values.toArray());
-            } else {
+                result = method.invoke(controllerInstance,parameterValues.toArray());
+            }else{
                 result = method.invoke(controllerInstance);
             }
-    
             if (result instanceof ModelView) {
                 ModelView modelView = (ModelView) result;
                 String viewUrl = modelView.getUrl();
