@@ -1,10 +1,8 @@
 package Controller;
-
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -12,6 +10,7 @@ import Annotation.Get;
 import Fonction.ListClasse;
 import Fonction.Mapping;
 import Fonction.ModelView;
+import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -81,23 +80,27 @@ ArrayList<Class<?>> controllers;
         }
     }
     
-    private void processRequest(HttpServletRequest req, HttpServletResponse resp) throws Exception {
-        String url = req.getServletPath();
+    private void processRequest(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException{
         PrintWriter out = resp.getWriter();
-        Mapping mapping = urlMappings.get(url);
-        if (mapping == null) {
-            resp.setContentType("text/html");
-            out.println("<h2>Erreur: L'URL demandée n'est pas disponible!</h2>");
-            return;
-        }
-    
-        String controllerName = mapping.getClassName();
-        String methodName = mapping.getMethodName();
+        String url = req.getServletPath();
         try {
+            // Check URL
+            Mapping mapping = urlMappings.get(url);
+            if (mapping == null) {
+                // L'URL n'est pas dans le mapping, afficher un message d'erreur
+                resp.setContentType("text/html");
+                throw new ServletException("404 Not Found . Url indisponible");
+            }
+    
+            // Récupération nom_contrôleur et méthode
+            String controllerName = mapping.getClassName();
+            String methodName = mapping.getMethodName();
+            // Créer une instance du contrôleur
             Class<?> controllerClass = Class.forName(controllerName);
-            Object controllerInstance = controllerClass.getDeclaredConstructor().newInstance();
+            Object controllerInstance = controllerClass.newInstance();
+            // Récuperation de la méthode à appeler
             Method method = null;
-            for (Method m : controllerClass.getMethods()) {
+            for (Method m : controllerClass.getMethods()){
                 if (m.getName().equals(methodName)) {
                     method = m;
                     break;
@@ -106,41 +109,51 @@ ArrayList<Class<?>> controllers;
             if (method == null) {
                 throw new NoSuchMethodException(controllerClass.getName() + "." + methodName + "()");
             }
-    
             Object result;
-            Parameter[] parameters = method.getParameters();
-            if (parameters.length > 0) {
-                ArrayList<Object> values = ListClasse.ParameterMethod(method, req);
-                if (values.size() != parameters.length) {
-                    throw new IllegalArgumentException("Nombre d'arguments incorrect pour la méthode " + method);
+            // Vérifier si la méthode possède des paramètres
+            if (method.getParameterCount() > 0) {
+                ArrayList<Object> parameterValues = ListClasse.getParameterValuesCombined(method, req);
+                if (parameterValues.size() != method.getParameterCount()) {
+                    throw new IllegalArgumentException("nombre de paramètres envoyés différents des paramètres de la méthode");
                 }
-                result = method.invoke(controllerInstance, values.toArray());
+                result = method.invoke(controllerInstance, parameterValues.toArray());
             } else {
                 result = method.invoke(controllerInstance);
             }
     
-            if (result instanceof ModelView) {
-                ModelView modelView = (ModelView) result;
-                String viewUrl = modelView.getUrl();
-                HashMap<String, Object> data = modelView.getData();
-                for (String key : data.keySet()) {
-                    req.setAttribute(key, data.get(key));
+            // Vérifier le type d'objet retourné
+            if (result instanceof String || result instanceof ModelView) {
+                // Le type d'objet retourné est valide, continuer le traitement
+                if (result instanceof ModelView) {
+                    ModelView modelView = (ModelView) result;
+                    String viewUrl = modelView.getUrl();
+                    HashMap<String, Object> data = modelView.getData();
+    
+                    // Définir les données en tant qu'attributs de requête
+                    for (String key : data.keySet()) {
+                        req.setAttribute(key, data.get(key));
+                    }
+    
+                    RequestDispatcher dispat = req.getRequestDispatcher(viewUrl);
+                    dispat.forward(req, resp);
+    
+                } else { // Si le résultat n'est pas une instance de ModelView, utiliser le code existant
+                    resp.setContentType("text/html");
+                    out.println("<h2>Test sprint 3 </h2>");
+                    out.println("<p><strong>Contrôleur</strong> : " + controllerName + "</p>");
+                    out.println("<p><strong>Méthode</strong> : " + methodName + "</p>");
+                    out.println("<p><strong>Execution de la fonction "+ methodName +" :</strong></p>");
+                    out.println(result.toString());
                 }
-                req.getRequestDispatcher(viewUrl).forward(req, resp);
-            } else if (result instanceof String) {
-                resp.setContentType("text/html");
-                out.println("<h2>Sprint 2 </h2><br>");
-                out.println("<p>Lien : " + url + "</p>");
-                out.println("<p>Contrôleur : " + controllerName + "</p>");
-                out.println("<p>Méthode : " + methodName + "</p>");
-                out.println("<p>Résultat : " + result.toString() + "</p>");
             } else {
-                throw new ServletException("Le type de retour de la méthode est invalide");
+                // Le type d'objet retourné n'est pas valide, lancer une exception TypeException
+                throw new ServletException("Erreur: Le type d'objet retourné n'est pas valide (String ou ModelView attendu)");
             }
         } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
             throw new ServletException("Erreur lors de l'exécution de la méthode", e);
+        } catch (Exception e) {
+            out.println(e.getLocalizedMessage());
         }
-    }
-    
+    }    
 
 }
