@@ -7,7 +7,10 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import com.google.gson.Gson;
+
 import Annotation.Get;
+import Annotation.RestAPI;
 import Fonction.ListClasse;
 import Fonction.Mapping;
 import Fonction.ModelView;
@@ -127,6 +130,23 @@ ArrayList<Class<?>> controllers;
             }else{
                 result = method.invoke(controllerInstance);
             }
+            boolean isRestApi = method.isAnnotationPresent(RestAPI.class);
+         if (isRestApi) {
+            // La méthode est annotée avec @RestApi, on traite le résultat en JSON
+            resp.setContentType("application/json");
+
+            if (result instanceof ModelView) {
+                // Transformer le 'data' du ModelView en JSON
+                ModelView modelView = (ModelView) result;
+                HashMap<String, Object> data = modelView.getData();
+                String json = new Gson().toJson(data);
+                out.print(json);
+            } else {
+                // Transformer directement le résultat en JSON
+                String json = new Gson().toJson(result);
+                out.print(json);
+            }
+        } else {
             if (result instanceof ModelView) {
                 ModelView modelView = (ModelView) result;
                 String viewUrl = modelView.getUrl();
@@ -145,7 +165,9 @@ ArrayList<Class<?>> controllers;
             } else {
                 throw new ServletException("Le type de retour de la méthode est invalide");
             }
-        } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
+        } 
+    }
+    catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
             throw new ServletException("Erreur lors de l'exécution de la méthode", e);
         }catch (Exception e){
             out.println(e.getLocalizedMessage());
