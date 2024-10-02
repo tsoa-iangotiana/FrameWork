@@ -10,7 +10,9 @@ import java.util.HashMap;
 import com.google.gson.Gson;
 
 import Annotation.Get;
+import Annotation.Post;
 import Annotation.RestAPI;
+import Annotation.Url;
 import Fonction.ListClasse;
 import Fonction.Mapping;
 import Fonction.ModelView;
@@ -42,22 +44,29 @@ ArrayList<Class<?>> controllers;
     
         try {
             this.setControllers(ListClasse.getAllClasses(packageName));
-    
             for (Class<?> controller : this.getControllers()) {
                 for (Method method : controller.getDeclaredMethods()) {
-                    if (method.isAnnotationPresent(Get.class)) {
+                    if(method.isAnnotationPresent(Url.class)){
                         String className = controller.getName();
                         String methodName = method.getName();
-                        Get getAnnotation = method.getAnnotation(Get.class);
+                        String verb = "GET";
+                        // Get verb= method.getAnnotation(Get.class);
+                        Url getAnnotation = method.getAnnotation(Url.class);
                         String url = getAnnotation.value();
-    
-                        if (urlMappings.containsKey(url)) {
-                            throw new ServletException("URL en double détectée: " + url + " pour " + className + "#" + methodName);
-                        }
-    
-                        Mapping mapping = new Mapping(className, methodName);
-                        urlMappings.put(url, mapping);
+                    if (method.isAnnotationPresent(Get.class)) {
+                            verb = "GET";
                     }
+                    else if(method.isAnnotationPresent(Post.class)){
+                        verb = "POST";
+                    }
+                          
+                          if (urlMappings.containsKey(url)) {
+                                throw new ServletException("URL en double détectée: " + url + " pour " + className + "#" + methodName);
+                            }
+        
+                            Mapping mapping = new Mapping(className, methodName,verb);
+                            urlMappings.put(url, mapping);
+                        }
                 }
             }
         } catch (ClassNotFoundException | IOException e) {
@@ -89,12 +98,19 @@ ArrayList<Class<?>> controllers;
         Mapping mapping = urlMappings.get(url);
         if (mapping == null) {
             resp.setContentType("text/html");
+            // out.println(mapping.getMethodName());
             out.println("<h2>Erreur: L'URL demandée n'est pas disponible!</h2>");
             return;
         }
-    
         String controllerName = mapping.getClassName();
         String methodName = mapping.getMethodName();
+        String requestedVerb = req.getMethod();
+        String verb = mapping.getVerb();
+        if (!requestedVerb.equalsIgnoreCase(verb)) {
+            resp.setContentType("text/html");
+            out.println("<h2>Erreur: Le verbe HTTP " + requestedVerb + " ne correspond pas à l'annotation " + mapping.getVerb() + " pour " + mapping.getClassName() + "#" + mapping.getMethodName() + "</h2>");
+            return;
+        }
         try {
             Class<?> controllerClass = Class.forName(controllerName);
             Object controllerInstance = controllerClass.getDeclaredConstructor().newInstance();
