@@ -3,17 +3,17 @@ package Fonction;
 public class Mapping {
     String className;
     String methodName;
-    String verb;
+    VerbAction verb;
 
-    public Mapping(String className, String methodName,String verb) {
+    public Mapping(String className, String methodName,VerbAction verb) {
         this.className = className;
         this.methodName = methodName;
         this.verb=verb;
     }
-    public String getVerb() {
+    public VerbAction getVerb() {
         return verb;
     }
-    public void setVerb(String verb) {
+    public void setVerb(VerbAction verb) {
         this.verb = verb;
     }
     public String getClassName() {

@@ -16,13 +16,14 @@ import Annotation.Url;
 import Fonction.ListClasse;
 import Fonction.Mapping;
 import Fonction.ModelView;
+import Fonction.VerbAction;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 public class FrontController extends HttpServlet {
-HashMap<String, Mapping> urlMappings = new HashMap<>();
+HashMap<VerbAction, Mapping> urlMappings = new HashMap<>();
 ArrayList<Class<?>> controllers;
 
     // getter et setter
@@ -49,23 +50,25 @@ ArrayList<Class<?>> controllers;
                     if(method.isAnnotationPresent(Url.class)){
                         String className = controller.getName();
                         String methodName = method.getName();
-                        String verb = "GET";
                         // Get verb= method.getAnnotation(Get.class);
                         Url getAnnotation = method.getAnnotation(Url.class);
                         String url = getAnnotation.value();
-                    if (method.isAnnotationPresent(Get.class)) {
-                            verb = "GET";
+                        // VerbAction verb =new VerbAction(url, "GET" );
+                        VerbAction verb =null;
+                        if (method.isAnnotationPresent(Get.class)) {
+                            verb = new VerbAction(url, "GET");
                     }
                     else if(method.isAnnotationPresent(Post.class)){
-                        verb = "POST";
+                        verb = new VerbAction(url, "POST");
                     }
                           
-                          if (urlMappings.containsKey(url)) {
-                                throw new ServletException("URL en double détectée: " + url + " pour " + className + "#" + methodName);
-                            }
-        
+                        //   if (urlMappings.containsKey(url)) {
+                        //         throw new ServletException("URL en double détectée: " + url + " pour " + className + "#" + methodName);
+                        //     }
+                        if (verb!= null) {
                             Mapping mapping = new Mapping(className, methodName,verb);
-                            urlMappings.put(url, mapping);
+                            urlMappings.put(verb, mapping);
+                        }
                         }
                 }
             }
@@ -95,7 +98,9 @@ ArrayList<Class<?>> controllers;
     private void processRequest(HttpServletRequest req, HttpServletResponse resp) throws Exception {
         String url = req.getServletPath();
         PrintWriter out = resp.getWriter();
-        Mapping mapping = urlMappings.get(url);
+        String requestedVerb = req.getMethod();
+        VerbAction verb = new VerbAction(url, requestedVerb);
+        Mapping mapping = urlMappings.get(verb);
         if (mapping == null) {
             resp.setContentType("text/html");
             // out.println(mapping.getMethodName());
@@ -104,9 +109,7 @@ ArrayList<Class<?>> controllers;
         }
         String controllerName = mapping.getClassName();
         String methodName = mapping.getMethodName();
-        String requestedVerb = req.getMethod();
-        String verb = mapping.getVerb();
-        if (!requestedVerb.equalsIgnoreCase(verb)) {
+        if (!requestedVerb.equalsIgnoreCase(verb.getVerb())) {
             resp.setContentType("text/html");
             out.println("<h2>Erreur: Le verbe HTTP " + requestedVerb + " ne correspond pas à l'annotation " + mapping.getVerb() + " pour " + mapping.getClassName() + "#" + mapping.getMethodName() + "</h2>");
             return;
