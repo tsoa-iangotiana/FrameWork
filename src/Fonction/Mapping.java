@@ -1,31 +1,34 @@
 package Fonction;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Mapping {
     String className;
-    String methodName;
-    VerbAction verb;
+    List<VerbAction> verbAction = new ArrayList<VerbAction>();
 
-    public Mapping(String className, String methodName,VerbAction verb) {
+    public Mapping(String className, List<VerbAction> verbAction) {
         this.className = className;
-        this.methodName = methodName;
-        this.verb=verb;
+        this.verbAction = verbAction;
     }
-    public VerbAction getVerb() {
-        return verb;
+    public Mapping(String className) {
+        this.className = className;
     }
-    public void setVerb(VerbAction verb) {
-        this.verb = verb;
+    public List<VerbAction> getVerbAction() {
+        return verbAction;
     }
+   
     public String getClassName() {
         return className;
     }
     public void setClassName(String className) {
         this.className = className;
     }
-    public String getMethodName() {
-        return methodName;
+    public void setVerbAction(List<VerbAction> verbAction) {
+        this.verbAction = verbAction;
     }
-    public void setMethodName(String methodName) {
-        this.methodName = methodName;
+    public void addVerbAction(VerbAction verbAction) {
+        this.verbAction.add(verbAction);
     }
+
 }
