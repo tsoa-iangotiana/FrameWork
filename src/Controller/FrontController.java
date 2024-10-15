@@ -17,14 +17,16 @@ import Fonction.ListClasse;
 import Fonction.Mapping;
 import Fonction.ModelView;
 import Fonction.VerbAction;
+import SprintException.ExceptionVerb;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 public class FrontController extends HttpServlet {
-HashMap<VerbAction, Mapping> urlMappings = new HashMap<>();
+HashMap<String, Mapping> urlMappings = new HashMap<>();
 ArrayList<Class<?>> controllers;
+
 
     // getter et setter
     public ArrayList<Class<?>> getControllers() {
@@ -33,6 +35,10 @@ ArrayList<Class<?>> controllers;
 
     public void setControllers(ArrayList<Class<?>> controllers) {
         this.controllers = controllers;
+    }
+
+    public void setUrlMappings(HashMap<String, Mapping> urlMappings) {
+        this.urlMappings = urlMappings;
     }
 
     @Override
@@ -51,29 +57,52 @@ ArrayList<Class<?>> controllers;
                         String className = controller.getName();
                         String methodName = method.getName();
                         // Get verb= method.getAnnotation(Get.class);
+                        // VerbAction verb =new VerbAction(url, "GET" );
+                        String verb = "GET";
+                        if (method.isAnnotationPresent(Get.class)) {
+                            verb = "POST";
+                        }
+                        else if(method.isAnnotationPresent(Post.class)){
+                            verb = "GET";
+                        }
                         Url getAnnotation = method.getAnnotation(Url.class);
                         String url = getAnnotation.value();
-                        // VerbAction verb =new VerbAction(url, "GET" );
-                        VerbAction verb =null;
-                        if (method.isAnnotationPresent(Get.class)) {
-                            verb = new VerbAction(url, "GET");
-                    }
-                    else if(method.isAnnotationPresent(Post.class)){
-                        verb = new VerbAction(url, "POST");
-                    }
                           
                         //   if (urlMappings.containsKey(url)) {
                         //         throw new ServletException("URL en double détectée: " + url + " pour " + className + "#" + methodName);
                         //     }
-                        if (verb!= null) {
-                            Mapping mapping = new Mapping(className, methodName,verb);
-                            urlMappings.put(verb, mapping);
+                        Mapping mapping = urlMappings.get(url);
+                        if (mapping == null) {
+                            Mapping map = new Mapping(className);
+                            map.addVerbAction(new VerbAction(methodName, verb));
+                            urlMappings.put(url, map);
+                        }
+                        else{
+                            boolean verbExists = false;
+                            for (VerbAction existingVerbAction : mapping.getVerbAction()) {
+                                if (existingVerbAction.getVerb().compareToIgnoreCase(verb) == 0) {
+                                    verbExists = true;
+                                    break;
+                                }
+                            }
+
+                            if (!verbExists) {
+                                // Ajouter un nouveau Verbe/Action s'il n'existe pas
+                                VerbAction verbAction = new VerbAction(methodName, verb);
+                                mapping.addVerbAction(verbAction);
+                            } else {
+                                throw new Exception("Erreur: L'URL " + url + " avec le verbe " + verb + " est déjà utilisée");
+                            }
                         }
                         }
                 }
             }
+            this.setUrlMappings(urlMappings);
         } catch (ClassNotFoundException | IOException e) {
             throw new ServletException("Erreur lors du scan des contrôleurs", e);
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
         }
     }
     @Override
@@ -99,21 +128,30 @@ ArrayList<Class<?>> controllers;
         String url = req.getServletPath();
         PrintWriter out = resp.getWriter();
         String requestedVerb = req.getMethod();
-        VerbAction verb = new VerbAction(url, requestedVerb);
-        Mapping mapping = urlMappings.get(verb);
+        PrintWriter aff= resp.getWriter();
+        // VerbAction verb = new VerbAction(url, requestedVerb);
+        Mapping mapping = urlMappings.get(url);
         if (mapping == null) {
-            resp.setContentType("text/html");
-            // out.println(mapping.getMethodName());
-            out.println("<h2>Erreur: L'URL demandée n'est pas disponible!</h2>");
+           String error = "404 Not found: URL indisponible hihi";
+           aff.println(error);
+           resp.sendError(HttpServletResponse.SC_NOT_FOUND,error);
+        }
+        VerbAction verbAction = null;
+        for(VerbAction va : mapping.getVerbAction()){
+            if(va.getVerb().compareToIgnoreCase(requestedVerb)==0 ){
+                verbAction =va;
+                break;
+            }
+        }
+        if(verbAction == null) {
+            String error = "Erreur le verbe" +requestedVerb+"n'est pas disponible";
+            aff.println(error);
+            resp.sendError(HttpServletResponse.SC_NOT_FOUND,error);
             return;
         }
         String controllerName = mapping.getClassName();
-        String methodName = mapping.getMethodName();
-        if (!requestedVerb.equalsIgnoreCase(verb.getVerb())) {
-            resp.setContentType("text/html");
-            out.println("<h2>Erreur: Le verbe HTTP " + requestedVerb + " ne correspond pas à l'annotation " + mapping.getVerb() + " pour " + mapping.getClassName() + "#" + mapping.getMethodName() + "</h2>");
-            return;
-        }
+        String methodName = verbAction.geMethod();
+
         try {
             Class<?> controllerClass = Class.forName(controllerName);
             Object controllerInstance = controllerClass.getDeclaredConstructor().newInstance();
@@ -185,6 +223,8 @@ ArrayList<Class<?>> controllers;
                 throw new ServletException("Le type de retour de la méthode est invalide");
             }
         } 
+    }catch(ExceptionVerb e){
+        resp.sendError(HttpServletResponse.SC_NOT_FOUND,e.getLocalizedMessage());
     }
     catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
             throw new ServletException("Erreur lors de l'exécution de la méthode", e);
