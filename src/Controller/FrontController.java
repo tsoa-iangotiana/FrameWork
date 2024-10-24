@@ -19,10 +19,12 @@ import Fonction.ModelView;
 import Fonction.VerbAction;
 import SprintException.ExceptionVerb;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+@MultipartConfig
 public class FrontController extends HttpServlet {
 HashMap<String, Mapping> urlMappings = new HashMap<>();
 ArrayList<Class<?>> controllers;
