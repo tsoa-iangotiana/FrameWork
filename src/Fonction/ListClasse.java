@@ -19,6 +19,7 @@ import com.thoughtworks.paranamer.Paranamer;
 import Annotation.Parametre;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.Part;
 
 public class ListClasse {
     public static ArrayList<Class<?>> getAllClasses(String packageName) throws ClassNotFoundException, IOException {
@@ -183,8 +184,17 @@ public class ListClasse {
             HttpSession session = request.getSession();
             MySession mySession = new MySession(session);
             parameterValues.add(mySession);
-    
-            }else if (!paramType.isPrimitive() && paramType != String.class) {
+            }
+            else if (paramType == Part.class) {
+            String paramName = parameterNamesArray[i];
+            Part filePart = request.getPart(paramName);
+            if (filePart == null) {
+                throw new IllegalArgumentException("Fichier manquant pour le paramètre: " + paramName);
+            }
+            parameterValues.add(filePart);
+
+            }
+            else if (!paramType.isPrimitive() && paramType != String.class) {
                 Object paramObject = paramType.newInstance();
     
                 Map<String, String[]> parameterMap = request.getParameterMap().entrySet().stream()
