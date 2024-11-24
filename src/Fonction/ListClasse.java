@@ -9,7 +9,8 @@ import java.lang.reflect.Parameter;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
-
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -18,6 +19,7 @@ import com.thoughtworks.paranamer.Paranamer;
 
 import Annotation.Parametre;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.Part;
 
@@ -169,53 +171,140 @@ public class ListClasse {
     }
 
 
-    public static ArrayList<Object> getParameterValuesCombined(Method method, HttpServletRequest request) throws Exception {
+    // public static ArrayList<Object> getParameterValuesCombined(Method method, HttpServletRequest request) throws Exception {
+    //     ArrayList<Object> parameterValues = new ArrayList<>();
+    //     Paranamer paranamer = new AdaptiveParanamer();
+    //     String[] parameterNamesArray = paranamer.lookupParameterNames(method, false);
+    
+    //     Parameter[] parameters = method.getParameters();
+    //     for (int i = 0; i < parameters.length; i++) {
+    //         int index = i;
+    //         Parameter param = parameters[i];
+    //         Class<?> paramType = param.getType();
+
+    //         if (paramType == MySession.class) {
+    //         HttpSession session = request.getSession();
+    //         MySession mySession = new MySession(session);
+    //         parameterValues.add(mySession);
+    //         }
+    //         else if (paramType == Part.class) {
+    //         String paramName = parameterNamesArray[i];
+    //         Part filePart = request.getPart(paramName);
+    //         if (filePart == null) {
+    //             throw new IllegalArgumentException("Fichier manquant pour le paramètre: " + paramName);
+    //         }
+    //         parameterValues.add(filePart);
+
+    //         }
+    //         else if (!paramType.isPrimitive() && paramType != String.class) {
+    //             Object paramObject = paramType.newInstance();
+    
+    //             Map<String, String[]> parameterMap = request.getParameterMap().entrySet().stream()
+    //                     .filter(entry -> entry.getKey().startsWith(parameterNamesArray[index] + "."))
+    //                     .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    
+    //             for (Map.Entry<String, String[]> entry : parameterMap.entrySet()) {
+    //                 String key = entry.getKey();
+    //                 String attributeName = key.substring(key.lastIndexOf(".") + 1);
+    //                 String value = entry.getValue()[0];
+    
+    //                 try {
+    //                     Field field = paramType.getDeclaredField(attributeName);
+    //                     field.setAccessible(true);
+    //                     field.set(paramObject, convertValue(field.getType(), value));
+    //                 } catch (Exception e) {
+    //                     throw new IllegalArgumentException("Impossible de définir la valeur du paramètre " + key, e);
+    //                 }
+    //             }
+    
+    //             parameterValues.add(paramObject);
+    //         } 
+    //         //atreto aloha
+    //         else {
+    //             String value = null;
+    //             if (param.isAnnotationPresent(Parametre.class)) {
+    //                 Parametre argument = param.getAnnotation(Parametre.class);
+    //                 String arg_name = argument.value();
+    //                 value = request.getParameter(arg_name);
+    //             } else {
+    //                 String paramName = parameterNamesArray[i];
+    //                 String[] requestParamNames = request.getParameterMap().keySet().toArray(new String[0]);
+    //                 boolean found = false;
+    //                 for (String requestParamName : requestParamNames) {
+    //                     if (requestParamName.equals(paramName)) {
+    //                         found = true;
+    //                         value = request.getParameter(requestParamName);
+    //                         break;
+    //                     }
+    //                 }
+    //                 if (!found) {
+    //                     throw new Exception("ETU2465 : tsisy annotation");
+    //                 }
+    //             }
+    //             if (value == null) {
+    //                 throw new IllegalArgumentException("Paramètre manquant ou invalide: " + param.getName());
+    //             }
+    //             parameterValues.add(value);
+    //         }
+    //     }
+    //     return parameterValues;
+    // }
+    public static ArrayList<Object> getParameterValuesCombined(Method method, HttpServletRequest request,HttpServletResponse response,String redirectView) throws Exception {
         ArrayList<Object> parameterValues = new ArrayList<>();
+        List<Map<String, String>> validationErrors = new ArrayList<>();
         Paranamer paranamer = new AdaptiveParanamer();
         String[] parameterNamesArray = paranamer.lookupParameterNames(method, false);
     
         Parameter[] parameters = method.getParameters();
         for (int i = 0; i < parameters.length; i++) {
-            int index = i;
             Parameter param = parameters[i];
             Class<?> paramType = param.getType();
-
+    
             if (paramType == MySession.class) {
-            HttpSession session = request.getSession();
-            MySession mySession = new MySession(session);
-            parameterValues.add(mySession);
-            }
-            else if (paramType == Part.class) {
-            String paramName = parameterNamesArray[i];
-            Part filePart = request.getPart(paramName);
-            if (filePart == null) {
-                throw new IllegalArgumentException("Fichier manquant pour le paramètre: " + paramName);
-            }
-            parameterValues.add(filePart);
-
-            }
-            else if (!paramType.isPrimitive() && paramType != String.class) {
-                Object paramObject = paramType.newInstance();
-    
-                Map<String, String[]> parameterMap = request.getParameterMap().entrySet().stream()
-                        .filter(entry -> entry.getKey().startsWith(parameterNamesArray[index] + "."))
-                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-    
-                for (Map.Entry<String, String[]> entry : parameterMap.entrySet()) {
-                    String key = entry.getKey();
-                    String attributeName = key.substring(key.lastIndexOf(".") + 1);
-                    String value = entry.getValue()[0];
-    
-                    try {
-                        Field field = paramType.getDeclaredField(attributeName);
-                        field.setAccessible(true);
-                        field.set(paramObject, convertValue(field.getType(), value));
-                    } catch (Exception e) {
-                        throw new IllegalArgumentException("Impossible de définir la valeur du paramètre " + key, e);
-                    }
+                HttpSession session = request.getSession();
+                MySession mySession = new MySession(session);
+                parameterValues.add(mySession);
+            } else if (paramType == Part.class) {
+                String paramName = parameterNamesArray[i];
+                Part filePart = request.getPart(paramName);
+                if (filePart == null) {
+                    throw new IllegalArgumentException("Fichier manquant pour le paramètre: " + paramName);
                 }
+                parameterValues.add(filePart);
+            } else if (!paramType.isPrimitive() && paramType != String.class) {
+                if (param.isAnnotationPresent(Parametre.class)) {
+                    // Processus pour les objets annotés avec @Argument
+                   Parametre argument = param.getAnnotation(Parametre.class);
+                    String prefix = argument.value() + ".";
     
-                parameterValues.add(paramObject);
+                    Object paramObject = paramType.newInstance();
+                    Valider validation = new Valider();
+    
+                    for (Field field : paramType.getDeclaredFields()) {
+                        field.setAccessible(true);
+                        String fieldName = field.getName();
+                        String value = request.getParameter(prefix + fieldName);
+    
+                        if (value == null) {
+                            throw new IllegalArgumentException("Paramètre manquant ou invalide: " + fieldName);
+                        }
+    
+                        // Validation avant de définir la valeur
+                        if (validation.isValidate(field, value)) {
+                            field.set(paramObject, convertValue(field.getType(), value));
+                        } else {
+                            // t
+                            Map<String, String> error = new HashMap<>();
+                            error.put(fieldName, "Validation échouée pour ce champ.");
+                            validationErrors.add(error);
+                    
+                        }
+                    }
+    
+                    parameterValues.add(paramObject);
+                } else {
+                    throw new IllegalArgumentException("L'objet doit être annoté avec @Argument");
+                }
             } else {
                 String value = null;
                 if (param.isAnnotationPresent(Parametre.class)) {
@@ -243,6 +332,11 @@ public class ListClasse {
                 parameterValues.add(value);
             }
         }
+        if (!validationErrors.isEmpty()) {
+            request.setAttribute("validationErrors", validationErrors);
+            request.getRequestDispatcher(redirectView).forward(request, response);
+        }
         return parameterValues;
     }
+    
 }
