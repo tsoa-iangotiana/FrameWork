@@ -181,7 +181,7 @@ ArrayList<Class<?>> controllers;
     
             Object result;
             if(method.getParameterCount() > 0){
-                ArrayList<Object> parameterValues = ListClasse.getParameterValuesCombined(method, req);
+                ArrayList<Object> parameterValues = ListClasse.getParameterValuesCombined(method, req,resp,url);
                 if (parameterValues.size() != method.getParameterCount()) {
                     throw new IllegalArgumentException("Nombre d'argument incorrect pour la methode" + method);
                 }
