@@ -172,40 +172,39 @@ public class ListClasse {
         ArrayList<Object> parameterValues = new ArrayList<>();
         Paranamer paranamer = new AdaptiveParanamer();
         String[] parameterNamesArray = paranamer.lookupParameterNames(method, false);
-    
         Parameter[] parameters = method.getParameters();
+    
         for (int i = 0; i < parameters.length; i++) {
-            int index = i;
             Parameter param = parameters[i];
             Class<?> paramType = param.getType();
-
+    
             if (paramType == MySession.class) {
-            HttpSession session = request.getSession();
-            MySession mySession = new MySession(session);
-            parameterValues.add(mySession);
+                HttpSession session = request.getSession();
+                MySession mySession = new MySession(session);
+                parameterValues.add(mySession);
+            } else if (!paramType.isPrimitive() && paramType != String.class) {
+                // Vérifie si le paramètre est annoté avec @Parametre
+                if (param.isAnnotationPresent(Parametre.class)) {
+                    Parametre argument = param.getAnnotation(Parametre.class);
+                    String prefix = argument.value() + ".";
     
-            }else if (!paramType.isPrimitive() && paramType != String.class) {
-                Object paramObject = paramType.newInstance();
-    
-                Map<String, String[]> parameterMap = request.getParameterMap().entrySet().stream()
-                        .filter(entry -> entry.getKey().startsWith(parameterNamesArray[index] + "."))
-                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-    
-                for (Map.Entry<String, String[]> entry : parameterMap.entrySet()) {
-                    String key = entry.getKey();
-                    String attributeName = key.substring(key.lastIndexOf(".") + 1);
-                    String value = entry.getValue()[0];
-    
-                    try {
-                        Field field = paramType.getDeclaredField(attributeName);
+                    Object paramObject = paramType.newInstance();
+                    for (Field field : paramType.getDeclaredFields()) {
                         field.setAccessible(true);
-                        field.set(paramObject, convertValue(field.getType(), value));
-                    } catch (Exception e) {
-                        throw new IllegalArgumentException("Impossible de définir la valeur du paramètre " + key, e);
-                    }
-                }
+                        String fieldName = field.getName();
+                        String value = request.getParameter(prefix + fieldName);
     
-                parameterValues.add(paramObject);
+                        if (value == null) {
+                            throw new IllegalArgumentException("Parametre invalide ou manquant " + fieldName);
+                        }
+    
+                        field.set(paramObject, convertValue(field.getType(), value));
+                    }
+    
+                    parameterValues.add(paramObject);
+                } else {
+                    throw new IllegalArgumentException("Le paramètre doit être annoté avec @Parametre(name)");
+                }
             } else {
                 String value = null;
                 if (param.isAnnotationPresent(Parametre.class)) {
