@@ -121,58 +121,55 @@ ArrayList<Class<?>> controllers;
             // }
     
             Object result;
-            if(method.getParameterCount() > 0){
-                ArrayList<Object> parameterValues = ListClasse.getParameterValuesCombined(method, req);
-                if (parameterValues.size() != method.getParameterCount()) {
-                    throw new IllegalArgumentException("Nombre d'argument incorrect pour la methode" + method);
+                if(method.getParameterCount() > 0){
+                    ArrayList<Object> parameterValues = ListClasse.getParameterValuesCombined(method, req);
+                    if (parameterValues.size() != method.getParameterCount()) {
+                        throw new IllegalArgumentException("Nombre d'argument incorrect pour la methode" + method);
+                    }
+                    result = method.invoke(controllerInstance,parameterValues.toArray());
+                }else{
+                    result = method.invoke(controllerInstance);
                 }
-                result = method.invoke(controllerInstance,parameterValues.toArray());
-            }else{
-                result = method.invoke(controllerInstance);
-            }
             boolean isRestApi = method.isAnnotationPresent(RestAPI.class);
-         if (isRestApi) {
-            // La méthode est annotée avec @RestApi, on traite le résultat en JSON
-            resp.setContentType("application/json");
+            if (isRestApi) {
+                    // La méthode est annotée avec @RestApi, on traite le résultat en JSON
+                    resp.setContentType("application/json");
 
-            if (result instanceof ModelView) {
-                // Transformer le 'data' du ModelView en JSON
-                ModelView modelView = (ModelView) result;
-                HashMap<String, Object> data = modelView.getData();
-                String json = new Gson().toJson(data);
-                out.print(json);
+                    if (result instanceof ModelView) {
+                        // Transformer le 'data' du ModelView en JSON
+                        ModelView modelView = (ModelView) result;
+                        HashMap<String, Object> data = modelView.getData();
+                        String json = new Gson().toJson(data);
+                        out.print(json);
+                    } else {
+                        // Transformer directement le résultat en JSON
+                        String json = new Gson().toJson(result);
+                        out.print(json);
+                    }
             } else {
-                // Transformer directement le résultat en JSON
-                String json = new Gson().toJson(result);
-                out.print(json);
-            }
-        } else {
-            if (result instanceof ModelView) {
-                ModelView modelView = (ModelView) result;
-                String viewUrl = modelView.getUrl();
-                HashMap<String, Object> data = modelView.getData();
-                for (String key : data.keySet()) {
-                    req.setAttribute(key, data.get(key));
+                if (result instanceof ModelView) {
+                    ModelView modelView = (ModelView) result;
+                    String viewUrl = modelView.getUrl();
+                    HashMap<String, Object> data = modelView.getData();
+                    for (String key : data.keySet()) {
+                        req.setAttribute(key, data.get(key));
+                    }
+                    req.getRequestDispatcher(viewUrl).forward(req, resp);
+                } else if (result instanceof String) {
+                    resp.setContentType("text/html");
+                    out.println("<h2>Sprint 2 </h2><br>");
+                    out.println("<p>Lien : " + url + "</p>");
+                    out.println("<p>Contrôleur : " + controllerName + "</p>");
+                    out.println("<p>Méthode : " + methodName + "</p>");
+                    out.println("<p>Résultat : " + result.toString() + "</p>");
+                } else {
+                    throw new ServletException("Le type de retour de la méthode est invalide");
                 }
-                req.getRequestDispatcher(viewUrl).forward(req, resp);
-            } else if (result instanceof String) {
-                resp.setContentType("text/html");
-                out.println("<h2>Sprint 2 </h2><br>");
-                out.println("<p>Lien : " + url + "</p>");
-                out.println("<p>Contrôleur : " + controllerName + "</p>");
-                out.println("<p>Méthode : " + methodName + "</p>");
-                out.println("<p>Résultat : " + result.toString() + "</p>");
-            } else {
-                throw new ServletException("Le type de retour de la méthode est invalide");
-            }
-        } 
-    }
-    catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
+            } 
+        }catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
             throw new ServletException("Erreur lors de l'exécution de la méthode", e);
         }catch (Exception e){
             out.println(e.getLocalizedMessage());
         }
     }
-    
-
 }
