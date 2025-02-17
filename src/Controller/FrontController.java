@@ -9,7 +9,6 @@ import java.util.HashMap;
 
 import com.google.gson.Gson;
 
-import Annotation.Get;
 import Annotation.Post;
 import Annotation.RestAPI;
 import Annotation.Url;
@@ -61,11 +60,8 @@ ArrayList<Class<?>> controllers;
                         // Get verb= method.getAnnotation(Get.class);
                         // VerbAction verb =new VerbAction(url, "GET" );
                         String verb = "GET";
-                        if (method.isAnnotationPresent(Get.class)) {
+                        if(method.isAnnotationPresent(Post.class)){
                             verb = "POST";
-                        }
-                        else if(method.isAnnotationPresent(Post.class)){
-                            verb = "GET";
                         }
                         Url getAnnotation = method.getAnnotation(Url.class);
                         String url = getAnnotation.value();
